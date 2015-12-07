@@ -15,7 +15,7 @@ filename = raw_input("Enter A Filename")
 imagedata = []
 
 try:
-	image = open(filename, "r")
+	image = open(filename, "rb")
 
 except (OSError, IOError) as e:
 	print "File Not Found! Exiting..."
