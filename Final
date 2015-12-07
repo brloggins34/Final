@@ -1,0 +1,207 @@
+#!/usr/bin/python
+
+import sys
+import binascii
+
+print "+--------------------------------------+"
+print "| Welcome to Brandon's Image Processor |"
+print "|                                      |"
+print "| This program is designed to modify   |"
+print "| PBM (Portable Bitmap) Files.         |"
+print "+--------------------------------------+"
+
+filename = raw_input("Enter A Filename")
+
+imagedata = []
+
+try:
+	image = open(filename, "rb")
+
+except (OSError, IOError) as e:
+	print "File Not Found! Exiting..."
+	sys.exit(0)
+
+print "Loading Image: %s" % (filename)
+
+with image as f:
+
+	#Read Magic Number (P6 for 8-bit PBM)
+	magic = f.readline()
+
+	#Read Width
+	width = f.readline()
+
+	#Read Height
+	height = f.readline()
+
+	#Read Color Depth, Max is 254 for Unsigned Bit Integer
+	depth = int(f.readline(),10)
+
+
+
+	while True:
+
+		#Read bytes for Red, Green, and Blue for each Pixel
+		rRaw = f.read(1)
+		gRaw = f.read(1)
+		bRaw = f.read(1)
+
+		#Break if we reach the end
+		if rRaw == "":
+			break
+		elif gRaw == "":
+			break
+		elif bRaw == "":
+			break
+
+		#Convert to decimal
+		r = int(binascii.hexlify(rRaw), 16)
+		g = int(binascii.hexlify(gRaw), 16)
+		b = int(binascii.hexlify(bRaw), 16)
+
+		#Append pixel to image data list
+		imagedata.append([r,g,b])
+
+print "Loaded Image: "+filename
+
+choice = ""
+
+#Display Menu
+while choice != "8":
+	print "\t1) Increase Brightness"
+	print "\t2) Decrease Brightness"
+	print "\t3) Increase Contrast"
+	print "\t4) Decrease Contrast"
+	print "\t5) Convert to Grayscale"
+	print "\t6) Invert Image"
+	print "\t7) Save Image"
+	print "\t8) Exit"
+	choice = input("Please enter your choice:")
+
+	#Brighten Image
+	if choice == 1:
+		bAmount = input("How much would you like to brighten the image? (0-255):")
+		temp = []
+		#Image color goes outside range then stop at 254
+		for red,green,blue in imagedata:
+			if (red + bAmount) > 254:
+				red = 254
+			else:
+				red = red + bAmount
+			if (green + bAmount) > 254:
+				green = 254
+			else:
+				green = green + bAmount
+			if (blue + bAmount) > 254:
+				blue = 254
+			else:
+				blue = blue + bAmount
+			temp.append([red,green,blue])
+		imagedata = temp
+		print "Done!"
+	#Darken Image
+	elif choice == 2:
+		bAmount = input("How much would you like to darken the image? (0-255):")
+		temp = []
+		#If color goes below 0 then set to 0
+		for red,green,blue in imagedata:
+			if (red - bAmount) < 0:
+				red = 0
+			else:
+				red = red - bAmount
+			if (green - bAmount) < 0:
+				green = 0
+			else:
+				green = green - bAmount
+			if (blue - bAmount) < 0:
+				blue = 0
+			else:
+				blue = blue - bAmount
+			temp.append([red,green,blue])
+		imagedata = temp
+		print "Done!"
+	elif choice == 3:
+		#Dark pixels get percentage closer to zero
+		#Light pixels get percentage closer to max depth
+		amount = float(input("How much would you like to increase the contrast? (Percent 0-100):"))
+		amount = amount/100
+		inverse = 1 - amount;
+		temp = []
+		for red,green,blue in imagedata:
+			if red < depth/2:
+				red = int(red*inverse)
+			else:
+				red = int(depth - ((depth - red) * inverse))
+			if green < depth/2:
+				green = int(green*inverse)
+			else:
+				green = int(depth - ((depth - green) * inverse))
+			if blue < depth/2:
+				blue = int(blue*inverse)
+			else:
+				blue = int(depth - ((depth - blue) * inverse))
+			#print "[%d,%d,%d]" % (red,green,blue)
+			temp.append([red,green,blue])
+		imagedata = temp
+		print "Done!"
+	elif choice == 4:
+		#Light and dark pixels both get percentage closer to center (depth/2)
+		amount = float(input("How much would you like to decrease the contrast? (Percent 0-100):"))
+		amount = amount/100
+		inverse = 1 - amount;
+		temp = []
+		for red,green,blue in imagedata:
+			if red < depth/2:
+				red = int(red + ((depth/2 - red)*amount))
+			else:
+				red = int(red - ((red - depth/2)*inverse))
+			if green < depth/2:
+				green = int(green + ((depth/2 - green)*amount))
+			else:
+				green = int(green - ((green - depth/2)*inverse))
+			if blue < depth/2:
+				blue = int(blue + ((depth/2 - blue)*amount))
+			else:
+				blue = int(blue - ((blue - depth/2)*inverse))
+			#print "[%d,%d,%d]" % (red,green,blue)
+			temp.append([red,green,blue])
+		imagedata = temp
+		print "Done!"
+	elif choice == 5:
+		#Average all 3 colors and set RGB all to same
+		print "Converting to Grayscale..."
+		temp = []
+		for red,green,blue in imagedata:
+			grey = int((red + green + blue)/3)
+			temp.append([grey,grey,grey])
+		imagedata = temp
+		print "Done!"
+	elif choice == 6:
+		#Depth - Color = Inverted Color
+		print "Inverting..."
+		temp = []
+		for red,green,blue in imagedata:
+			red = depth - red
+			green = depth - green
+			blue = depth - blue
+			temp.append([red,green,blue])
+		imagedata = temp
+		print "Done!"	
+	elif choice == 7:
+		#Write Image to Output
+		print "Saving Image..."
+		newfile = raw_input("Please enter a new file name (Without Extension):")
+		ppmfile=open("%s.pbm" % (newfile),'wb')
+		ppmfile.write("%s" % (magic)) 
+		ppmfile.write("%s" % (width))
+		ppmfile.write("%s" % (height)) 
+		ppmfile.write("%d\n" % (depth))
+		for red,green,blue in imagedata:
+			ppmfile.write("%c%c%c" % (red,green,blue))
+		ppmfile.close()
+		print "Done!"
+	elif choice == 8:
+		print "Exiting Program"
+		sys.exit(0)
+	else:
+		print "Error! Selection Not Found!"
